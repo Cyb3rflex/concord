@@ -28,3 +28,51 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Version comes from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Advisory on PRs, blocking on main for high+ production vulnerabilities.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+      - name: Check dependency licenses against allow-list
+        run: |
+          set -euo pipefail
+          allowlist=".github/license-allowlist.txt"
+          if [ ! -f "$allowlist" ]; then
+            echo "::error::Missing license allow-list at $allowlist"
+            exit 1
+          fi
+          pnpm licenses list --prod --json > licenses.json
+          node -e '
+            const fs = require("fs");
+            const allow = new Set(
+              fs.readFileSync(".github/license-allowlist.txt", "utf8")
+                .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+            );
+            const data = JSON.parse(fs.readFileSync("licenses.json", "utf8"));
+            const offenders = [];
+            for (const [license, entries] of Object.entries(data)) {
+              if (allow.has(license)) continue;
+              for (const e of entries) {
+                const versions = e.versions ? e.versions.join(", ") : "";
+                offenders.push(`${e.name}@${versions} -> ${license} (${e.path || "unknown path"})`);
+              }
+            }
+            if (offenders.length) {
+              console.error("Disallowed licenses found:");
+              for (const o of offenders) console.error(`  - ${o}`);
+              process.exit(1);
+            }
+            console.log("All production dependency licenses are allow-listed.");
+          '
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
