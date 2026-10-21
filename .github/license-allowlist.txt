@@ -1,9 +1,9 @@
-# SPD Expression License Allow-List
+# SPDX License Allow-List
 # One license identifier per line. Lines starting with # are comments.
 # Compared case-insensitively against the license field reported by pnpm licenses.
 MIT
 ISC
 Apache-2.0
-BSD-2Cuause
-BSD-3Clause
+BSD-2-Clause
+BSD-3-Clause
 0BSD

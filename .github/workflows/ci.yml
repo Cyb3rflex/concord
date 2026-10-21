@@ -115,12 +115,12 @@ jobs:
             const fs = require("fs");
             const allow = new Set(
               fs.readFileSync(".github/license-allowlist.txt", "utf8")
-                .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+                .split("\n").map((l) => l.trim().toLowerCase()).filter((l) => l && !l.startsWith("#"))
             );
             const data = JSON.parse(fs.readFileSync("licenses.json", "utf8"));
             const offenders = [];
             for (const [license, entries] of Object.entries(data)) {
-              if (allow.has(license)) continue;
+              if (allow.has(license.toLowerCase())) continue;
               for (const e of entries) {
                 const versions = e.versions ? e.versions.join(", ") : "";
                 offenders.push(`${e.name}@${versions} -> ${license} (${e.path || "unknown path"})`);
